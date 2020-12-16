@@ -75,7 +75,7 @@ print('score is %s'%(rf.score(x_test,y_test)))
 
 
 #kmeans
-dfx = data.drop(['id'], axis=1)
+dfx = data.drop(['id','pep'], axis=1)
 dfy = data['pep']
 x_train, x_test, y_train, y_test = train_test_split(dfx, dfy, test_size=0.25, random_state=0)
 x_train.shape
@@ -87,4 +87,4 @@ dfx.head(3)
 print(kmeanModel.cluster_centers_)
 dfx = dfx.drop('label', axis=1)
 dfx.head(3)
-plt.scatter(dfx['pep'], dfx['region'], c=kmeanModel.labels_.astype(float))
+display(plt.scatter(dfx['income'], dfx['region'], c=kmeanModel.labels_.astype(float)))
