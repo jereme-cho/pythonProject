@@ -2,28 +2,23 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
-import matplotlib
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV,LeaveOneOut, cross_val_score, KFold
 from sklearn.feature_selection import RFECV
 
-
-#교차검증용
-loo = LeaveOneOut() # LeaveOneOut model
-
 #data load
 data = pd.read_csv("data_pepTestCustomers.csv")
-
 
 # 새로운 변수 생성
 
 #수정소득
+# data.loc[data['children']==0,'adjincome'] = data['income']
+# data.loc[data['children']!=0,'adjincome'] = data['income'] / data['children']
 #소득 / 가족수 = 1인당 소득
-data['incomePerPerson1'] = data['income'] / (1+ data['children'])
+data['incomePerPerson1'] = data['income'] / (1 + data['children'])
 #소득 / 가족수 = 1인당 소득 어린이는 절반으로 카운트
 # data['incomePerPerson2'] = data['income'] / (1+ data['children']/2)
 #소득 / (1+ 배우자 + 자녀)
@@ -44,7 +39,7 @@ data.loc[data['region']==0,'region0'] = 1
 data.loc[data['region']==1,'region1'] = 1
 data.loc[data['region']==2,'region2'] = 1
 data.loc[data['region']==3,'region3'] = 1
-# 아이수를 범주형으로 0명, 1명, 2명이상 세그룹으로 나눔
+# 아이수를 범주형으로
 data['children0'] = 0
 data['children1'] = 0
 data['children2'] = 0
@@ -65,6 +60,7 @@ mmdfx = MinMaxScaler().fit_transform(dfx)
 # train set 과 test set 생성
 x_train , x_test, y_train, y_test = train_test_split(dfx,dfy,test_size = 0.3, random_state = 0)
 
+# 테스트 후 안쓰는걸로
 # x_train , x_test, y_train, y_test = train_test_split(stddfx,dfy,test_size = 0.3, random_state = 0)
 # x_train , x_test, y_train, y_test = train_test_split(mmdfx,dfy,test_size = 0.3, random_state = 0)
 
@@ -72,6 +68,7 @@ x_train , x_test, y_train, y_test = train_test_split(dfx,dfy,test_size = 0.3, ra
 # tree default
 from sklearn.tree import DecisionTreeClassifier
 tree = DecisionTreeClassifier(max_depth = 7, random_state = 0)
+# tree = DecisionTreeClassifier(max_depth = 6, random_state = 0)
 tree.fit(x_train,y_train)
 print('score is %s'%(tree.score(x_test,y_test)))
 # score is 0.8277777777777777
@@ -79,21 +76,21 @@ print('score is %s'%(tree.score(x_test,y_test)))
 
 
 #tree scale
-tree_clf = Pipeline([ ("scaler", MinMaxScaler()),("clf", DecisionTreeClassifier(random_state = 0)),])
-# tree_clf = Pipeline([ ("scaler", StandardScaler()),("clf", DecisionTreeClassifier(max_depth = 7, random_state = 0)),])
+# tree_clf = Pipeline([ ("scaler", MinMaxScaler()),("clf", DecisionTreeClassifier(random_state = 0)),])
+tree_clf = Pipeline([ ("scaler", StandardScaler()),("clf", DecisionTreeClassifier(max_depth = 7, random_state = 0)),])
 tree_clf.fit(x_train,y_train)
 print('score is %s'%(tree_clf.score(x_test,y_test)))
-# score is 0.7833333333333333
+# score is 0.8277777777777777
 
 
 
 #tree grid
 param_grid = [{ 'max_depth':[6,7,8,9,10,11,12,13],'max_leaf_nodes': list(range(2, 100,3)), 'min_samples_split': [2, 3, 4]},]
 tree_clf = DecisionTreeClassifier()
-grid_search = GridSearchCV(tree_clf,param_grid,cv=5,scoring='neg_mean_squared_error',return_train_score=True,n_jobs=-1)
-grid_search.fit(x_train,y_train)
-grid_search.best_params_
-grid=grid_search.best_estimator_.fit(x_train,y_train)
+grid_tree = GridSearchCV(tree_clf,param_grid,cv=5,scoring='neg_mean_squared_error',return_train_score=True,n_jobs=-1)
+grid_tree.fit(x_train,y_train)
+grid_tree.best_params_
+grid=grid_tree.best_estimator_.fit(x_train,y_train)
 print('score is {:.3f}'.format(grid.score(x_test,y_test)))
 # score is 0.889
 
@@ -104,22 +101,27 @@ rfecv.transform(x_train)
 rfecv.n_features_
 rfecv.support_
 rfecv.ranking_
-x_train.columns
-x_train.shape
 
-for i in range(rfecv.support_.shape[0]):
-    print(x_train.columns.values[i]+ " : "  +rfecv.ranking_[i].astype(str)+ " : " +rfecv.support_[i].astype(str) )
+
+[print(x_train.columns.values[i]+ " : "  +rfecv.ranking_[i].astype(str)+ " : " +rfecv.support_[i].astype(str)) for i in range(rfecv.support_.shape[0])]
 # 중요한 변수들로 다시 train test set 생성 후 재 실행
 newdfx=dfx.loc[:,rfecv.support_]
 x_train , x_test, y_train, y_test = train_test_split(newdfx,dfy,test_size = 0.3, random_state = 0)
 
-grid_search.fit(x_train,y_train)
-grid_search.best_params_
-grid=grid_search.best_estimator_.fit(x_train,y_train)
+grid_tree.fit(x_train,y_train)
+grid_tree.best_params_
+grid=grid_tree.best_estimator_.fit(x_train,y_train)
 print('score is {:.3f}'.format(grid.score(x_test,y_test)))
 # score is 0.889
 
 
+newdfx=dfx[['age', 'income', 'married', 'save_act', 'mortgage', 'incomePerPerson1', 'children0', 'children1']]
+x_train , x_test, y_train, y_test = train_test_split(newdfx,dfy,test_size = 0.3, random_state = 0)
+grid_tree.fit(x_train,y_train)
+grid_tree.best_params_
+grid=grid_tree.best_estimator_.fit(x_train,y_train)
+print('score is {:.3f}'.format(grid.score(x_test,y_test)))
+# score is 0.889
 
 
 #Random forest
@@ -127,13 +129,14 @@ print('score is {:.3f}'.format(grid.score(x_test,y_test)))
 x_train , x_test, y_train, y_test = train_test_split(dfx,dfy,test_size = 0.3, random_state = 0)
 
 from sklearn.ensemble import RandomForestClassifier
-clf = RandomForestClassifier(max_depth=6, random_state=0,n_jobs=-1,class_weight='balanced')
-clf.fit(x_train, y_train)
-print(clf.score(x_test,y_test))
+rf_clf = RandomForestClassifier(max_depth=6, random_state=0,n_jobs=-1,class_weight='balanced')
+# rf_clf = RandomForestClassifier(max_depth=7, random_state=0,n_jobs=-1,class_weight='balanced')
+rf_clf.fit(x_train, y_train)
+print(rf_clf.score(x_test,y_test))
 # 0.8722222222222222
 
 #특성 중요도 그래프
-importances=clf.feature_importances_
+importances=rf_clf.feature_importances_
 indices = np.argsort(importances)[::1]
 names = [x_train.columns[i] for i in indices]
 plt.figure()
@@ -143,10 +146,10 @@ plt.show()
 
 
 
-tree_clf = Pipeline([ ("scaler", MinMaxScaler()),("clf", RandomForestClassifier()),])
-# tree_clf = Pipeline([ ("scaler", StandardScaler()),("clf", RandomForestClassifier()),])
-tree_clf.fit(x_train,y_train)
-print('score is {:.3f}'.format(tree_clf.score(x_test,y_test)))
+rf_clf = Pipeline([ ("scaler", MinMaxScaler()),("clf", RandomForestClassifier()),])
+# rf_clf = Pipeline([ ("scaler", StandardScaler()),("clf", RandomForestClassifier()),])
+rf_clf.fit(x_train,y_train)
+print('score is {:.3f}'.format(rf_clf.score(x_test,y_test)))
 # score is 0.861
 
 
@@ -154,12 +157,12 @@ print('score is {:.3f}'.format(tree_clf.score(x_test,y_test)))
 #rftree grid
 param_grid = [{'n_estimators' : [100,200], 'max_depth':[6,7,8,9,10,11,12],'min_samples_split': [2, 3, 4]},]
 rf_clf = RandomForestClassifier()
-grid_search = GridSearchCV(rf_clf,param_grid,cv=5,scoring='neg_mean_squared_error',return_train_score=True,n_jobs=-1)
-grid_search.fit(x_train,y_train)
-grid_search.best_params_
-rf_grid=grid_search.best_estimator_.fit(x_train,y_train)
+rf_grid_search = GridSearchCV(rf_clf,param_grid,cv=5,scoring='neg_mean_squared_error',return_train_score=True,n_jobs=-1)
+rf_grid_search.fit(x_train,y_train)
+rf_grid_search.best_params_
+rf_grid=rf_grid_search.best_estimator_.fit(x_train,y_train)
 print('score is {:.3f}'.format(rf_grid.score(x_test,y_test)))
-# score is 0.872
+# score is 0.861
 
 
 
@@ -171,19 +174,16 @@ rfecv.transform(x_train)
 rfecv.n_features_
 rfecv.support_
 rfecv.ranking_
-x_train.columns
-x_train.shape
 
-for i in range(rfecv.support_.shape[0]):
-    print(x_train.columns.values[i]+ " : "  +rfecv.ranking_[i].astype(str)+ " : " +rfecv.support_[i].astype(str) )
+[print(x_train.columns.values[i]+ " : "  +rfecv.ranking_[i].astype(str)+ " : " +rfecv.support_[i].astype(str)) for i in range(rfecv.support_.shape[0])]
 # 중요한 변수들로 다시 train test set 생성 후 재 실행
 newdfx=dfx.loc[:,rfecv.support_]
 x_train , x_test, y_train, y_test = train_test_split(newdfx,dfy,test_size = 0.3, random_state = 0)
 
-grid_search.fit(x_train,y_train)
-grid_search.best_params_
-grid=grid_search.best_estimator_.fit(x_train,y_train)
-print('score is {:.3f}'.format(grid.score(x_test,y_test)))
+rf_grid_search.fit(x_train,y_train)
+rf_grid_search.best_params_
+rf_grid=rf_grid_search.best_estimator_.fit(x_train,y_train)
+print('score is {:.3f}'.format(rf_grid.score(x_test,y_test)))
 # score is 0.872
 
 
@@ -199,27 +199,22 @@ print('score is {:.3f}'.format(adab.score(x_test,y_test)))
 # 기각
 
 
-#tree RFECV 재귀적 특성 제거
+#Ada RFECV 재귀적 특성 제거
 rfecv = RFECV(estimator=adab, step=1, scoring='neg_mean_squared_error')
 rfecv.fit(x_train,y_train)
 rfecv.transform(x_train)
 rfecv.n_features_
 rfecv.support_
 rfecv.ranking_
-x_train.columns
-x_train.shape
 
-for i in range(rfecv.support_.shape[0]):
-    print(x_train.columns.values[i]+ " : "  +rfecv.ranking_[i].astype(str)+ " : " +rfecv.support_[i].astype(str) )
+[print(x_train.columns.values[i]+ " : "  +rfecv.ranking_[i].astype(str)+ " : " +rfecv.support_[i].astype(str)) for i in range(rfecv.support_.shape[0])]
 # 중요한 변수들로 다시 train test set 생성 후 재 실행
 newdfx=dfx.loc[:,rfecv.support_]
 x_train , x_test, y_train, y_test = train_test_split(newdfx,dfy,test_size = 0.3, random_state = 0)
 
-grid_search.fit(x_train,y_train)
-grid_search.best_params_
-grid=grid_search.best_estimator_.fit(x_train,y_train)
-print('score is {:.3f}'.format(grid.score(x_test,y_test)))
-# score is 0.7828
+adab = adaboost.fit(x_train,y_train)
+print('score is {:.3f}'.format(adab.score(x_test,y_test)))
+# score is 0.783
 
 
 
@@ -236,14 +231,14 @@ print('score is {:.3f}'.format(grad.score(x_test,y_test)))
 
 
 #GradientBoostingClassifier GridSearchCV
-model = GradientBoostingClassifier(random_state=0)
+Grand_model = GradientBoostingClassifier(random_state=0)
 param_test = { "n_estimators": range(50, 100, 25),
                "max_depth": [1, 2, 4],
                "learning_rate": [0.001, 0.01, 0.3, 0.5, 1],
                "subsample": [0.5, 0.7, 0.9],
                "max_features": list(range(2, 4)),
                }
-gsearch = GridSearchCV(estimator=model, param_grid=param_test, scoring="roc_auc", n_jobs=4, iid=False, cv=3,)
+gsearch = GridSearchCV(estimator=Grand_model, param_grid=param_test, scoring="roc_auc", n_jobs=4, iid=False, cv=3,)
 gsearch.fit(x_train, y_train)
 print(gsearch.score(x_test,y_test))
 # 0.8731472332015809
@@ -259,17 +254,24 @@ model.fit(x_train, y_train)
 print('score is {:.3f}'.format(model.score(x_test,y_test)))
 # score is 0.867
 
+gsearch.best_estimator_.score(x_test,y_test)
+
+
 for i in range(model.feature_importances_.shape[0]):
     print(x_train.columns.values[i]+ " : "  + model.feature_importances_[i].astype(str) )
 
-
+# 중요도 0.02 이상만 추출 하여 인풋데이터를 재 생성
 newdfx= dfx.loc[:,model.feature_importances_>0.02]
+print(newdfx.columns)
+# 돌리때 마다 바뀌는것 같은데  아래 변수 선택시 0.883
+# Index(['age', 'income', 'married', 'save_act', 'mortgage', 'incomePerPerson1''region0', 'children0', 'children1', 'children2', 'children3'],dtype='object')
+
 # newdfx= dfx[['age', 'income', 'married', 'save_act', 'mortgage', 'incomePerPerson1','children0', 'children1', 'children2', 'children3']]
 x_train , x_test, y_train, y_test = train_test_split(newdfx,dfy,test_size = 0.3, random_state = 0)
 
 model.fit(x_train, y_train)
 print('score is {:.3f}'.format(model.score(x_test,y_test)))
-# score is 0.867
+# score is 0.883
 
 
 #cat boost
@@ -285,7 +287,7 @@ print('score is {:.3f}'.format(cb.score(x_test,y_test)))
 
 #특성분석
 cb.get_feature_importance()
-x_train.shape
+
 for i in range(cb.get_feature_importance().shape[0]):
     print(x_train.columns.values[i]+ " : "  + cb.get_feature_importance()[i].astype(str) )
 #그래프로 그리기
@@ -300,6 +302,7 @@ plt.show()
 
 #gridsearch
 cat_features_index = [0,1,2,3,4,5,6]
+# 먼저 이걸로 돌려서 나온 best param 결과를 일부 발췌헤서 아래에서 다시
 # params = {'depth':[4,7,10],
 #           'learning_rate':[0.03,0.1,0.15],
 #           'l2_leaf_reg':[1,4,9],
@@ -315,10 +318,12 @@ print('score is {:.3f}'.format(cb_model.score(x_test,y_test)))
 # score is 0.917
 
 cb_model.best_params_
+# {'depth': 4, 'iterations': 300, 'l2_leaf_reg': 1, 'learning_rate': 0.03}
 
 
-
-newdfx=dfx[['age', 'income', 'married', 'save_act', 'mortgage', 'incomePerPerson1', 'children0', 'children1']]
+# 중요도를 보고 변수 선택.
+newdfx=dfx[['age', 'income', 'married', 'save_act', 'mortgage', 'incomePerPerson1', 'children0']]
+# newdfx=dfx[['age', 'income', 'married', 'save_act', 'mortgage', 'incomePerPerson1', 'children0', 'children1']]
 # newdfx=dfx[['age', 'income', 'married', 'save_act', 'mortgage', 'incomePerPerson1', 'children0', 'children1', 'children2', 'children3']]
 x_train , x_test, y_train, y_test = train_test_split(newdfx,dfy,test_size = 0.3, random_state = 0)
 
@@ -328,7 +333,8 @@ print('score is {:.3f}'.format(cb_model.score(x_test,y_test)))
 
 # score is 0.932
 
-
+# 초기 인풋데이터
+x_train , x_test, y_train, y_test = train_test_split(dfx,dfy,test_size = 0.3, random_state = 0)
 from sklearn.svm import SVC
 svc=SVC().fit(x_train,y_train)
 print(svc.score(x_test,y_test))
@@ -351,8 +357,6 @@ rfecv.transform(x_train)
 rfecv.n_features_
 rfecv.support_
 rfecv.ranking_
-x_train.columns
-x_train.shape
 
 for i in range(rfecv.support_.shape[0]):
     print(x_train.columns.values[i]+ " : "  +rfecv.ranking_[i].astype(str)+ " : " +rfecv.support_[i].astype(str) )
@@ -379,7 +383,7 @@ x_train , x_test, y_train, y_test = train_test_split(newdfx,dfy,test_size = 0.3,
 
 # voting <= 그라디언  랜던포레스트 캣부스트
 voting_clf = VotingClassifier(
-    estimators=[('gbc',gsearch),('tree',grid_search),('catB',cb_model)],
+    estimators=[('gbc',gsearch),('tree',rf_grid),('catB',cb_model)],
     # estimators=[('gbc', grad), ('rf', rf_grid), ('catB', cb_model)],
     voting='hard', n_jobs=-1)
 voting_clf.fit(x_train,y_train)

@@ -238,6 +238,47 @@ predicted = rf.predict(x_test)
 print('score is %s'%(rf.score(x_test,y_test)))
 
 
+from sklearn.svm import SVC
+scaler_tuple = ('scaler', MinMaxScaler())
+model_tuple = ('svc', SVC())
+pipe = Pipeline([scaler_tuple, model_tuple])
+pipe.fit(x_train, y_train)
+values = np.array([0.001, 0.01, 0.1, 1, 10, 100])
+params = {'svc__C':values, 'svc__gamma':values}
+grid = GridSearchCV(pipe, param_grid=params, cv=5,n_jobs=-1)
+grid.fit(x_train, y_train)
+
+
+print('optimal train score: {:.3f}'.format(grid.best_score_))
+# optimal train score: 0.826
+print('test score: {:.3f}'.format(grid.score(x_test, y_test)))
+# test score: 0.844
+print('optimal parameter: {}'.format(grid.best_params_))
+# optimal parameter: {'svc__C': 10.0, 'svc__gamma': 0.1}
+
+# test validation
+# LOOCV  <-오래걸림..
+# scores_loo = cross_val_score(grid, dfx, dfy, cv=loo)
+# K-fold(5)
+# kfold = KFold(n_splits=5, random_state=0, shuffle=True)
+# scores_fold = cross_val_score(grid, dfx, dfy, cv=kfold) # model, train, target, cross validation
+# cv result
+# print('mean score_loocv : {:.3f}'.format(scores_loo.mean()))
+# mean score_loocv : 0.858
+print('mean score_kfold : {:.3f}'.format(scores_fold.mean()))
+# mean score_kfold : 0.850
+
+
+
+
+
+
+
+
+
+
+
+
 
 from sklearn.ensemble import VotingClassifier
 from sklearn.linear_model import LogisticRegression
